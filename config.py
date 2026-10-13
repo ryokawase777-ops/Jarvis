@@ -13,10 +13,21 @@ def _get(name: str, default: str = "") -> str:
     return value or default  # 空欄なら既定値
 
 
-# --- Claude ---
+# --- 頭脳（会話） ---
+# ollama: PC上で動く・無料 / claude: Claude API（従量課金）
+LLM_ENGINE = _get("LLM_ENGINE", "ollama").lower()
+OLLAMA_URL = _get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_MODEL = _get("OLLAMA_MODEL", "qwen2.5:7b")
+
+# --- Claude API（LLM_ENGINE=claude のときだけ使う） ---
 ANTHROPIC_API_KEY = _get("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = _get("CLAUDE_MODEL", "claude-sonnet-5-5")
 MAX_HISTORY_TURNS = int(_get("MAX_HISTORY_TURNS", "20"))  # 覚えておく往復数
+
+# --- 開発担当（Claude Code。月額プランで動く） ---
+CLAUDE_CODE_PATH = _get("CLAUDE_CODE_PATH")                  # 空なら自動で探す
+CLAUDE_CODE_DIR = _get("CLAUDE_CODE_DIR", str(BASE_DIR))      # 作業するフォルダ
+CLAUDE_CODE_TIMEOUT = int(_get("CLAUDE_CODE_TIMEOUT", "900"))  # 作業の制限時間（秒）
 
 # --- ウェイクワード ---
 # auto: Picovoiceのキーがあれば porcupine（「ジャービス」）、なければ openwakeword（「ヘイ、ジャービス」）

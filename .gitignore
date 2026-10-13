@@ -12,3 +12,6 @@ __pycache__/
 *.wav
 *.mp3
 *.log
+
+# Claude Code の個人設定
+.claude/settings.local.json

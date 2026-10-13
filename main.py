@@ -2,14 +2,14 @@
 
 「ジャービス」と呼ぶ → ピコンと鳴る → 話しかける → 音声で返答
 返答後しばらくは、呼ばずにそのまま続けて話せます。
+「開発モード」と言うと、それ以降の発言はパソコンの Claude Code に開発の依頼として渡します。
 """
 import re
 import sys
 
-import anthropic
-
 import config
-from brain import Brain
+from brain import Brain, BrainError, make_llm
+from claude_code import ClaudeCode, ClaudeCodeError
 from listener import Transcriber, record_utterance
 from personas import PERSONAS
 from voice import Speaker, chime
@@ -19,6 +19,14 @@ SENTENCE_END = re.compile(r"[。！？!?\n]")
 END_WORDS = ("以上です", "以上で", "もう大丈夫", "ありがとう以上", "おやすみ", "下がっていい")
 SHUTDOWN_WORDS = ("システム終了", "シャットダウン")
 SWITCH_WORDS = ("代わって", "かわって", "変わって", "交代", "呼んで", "出して")
+DEV_START_WORDS = ("開発モード",)
+DEV_END_WORDS = ("開発モード終了", "開発モードを終了", "開発モードおわり", "開発モード終わり", "開発終了")
+CLAUDE_CODE_WORDS = ("クロードコード", "claudecode")  # 開発モード外でも、この言葉が入っていれば一回だけ頼む
+
+
+def _norm(text: str) -> str:
+    """聞き取り結果の表記ゆれ（空白・句読点・中黒）をそろえる"""
+    return re.sub(r"[\s、。・,.!！?？]", "", text).lower()
 
 
 def find_switch(text: str, current: str):
@@ -45,33 +53,61 @@ def answer(brain: Brain, text: str, speaker: Speaker) -> None:
                 buf = buf[m.end():]
         if buf.strip():
             speaker.say(buf, persona)
-    except anthropic.APIError as e:
-        print(f"\n[APIエラー] {e}")
-        speaker.say("申し訳ありません、通信に問題が発生しました。", persona)
+    except BrainError as e:
+        print(f"\n[エラー] {e}")
+        speaker.say("申し訳ありません、頭脳との通信に問題が発生しました。", persona)
     print()
     speaker.wait()
 
 
+def ask_claude_code(coder: ClaudeCode, text: str, persona, speaker: Speaker) -> None:
+    """開発の依頼を Claude Code に渡し、結果を読み上げる"""
+    speaker.say(f"承知しました、{persona.call}。開発担当に依頼します。終わったらお知らせします。", persona)
+    speaker.wait()
+    print("Claude Code 作業中…（数分かかることがあります）")
+    try:
+        result = coder.ask(text)
+    except ClaudeCodeError as e:
+        print(f"[Claude Code エラー] {e}")
+        speaker.say("申し訳ありません、開発担当の作業がうまくいきませんでした。画面のメッセージを確認してください。", persona)
+        speaker.wait()
+        return
+    print(f"Claude Code: {result}")
+    for sentence in re.split(r"(?<=[。！？!?\n])", result):
+        if sentence.strip():
+            speaker.say(sentence, persona)
+    speaker.wait()
+
+
 def main() -> None:
-    if not config.ANTHROPIC_API_KEY:
-        print("エラー: .env に ANTHROPIC_API_KEY を設定してください。")
+    try:
+        llm = make_llm()
+        llm.check()
+    except BrainError as e:
+        print(f"エラー: {e}")
         sys.exit(1)
 
+    print(f"頭脳: {llm.name}")
+    coder = ClaudeCode()
+    if not coder.available():
+        print("注意: Claude Code が見つからないため、開発モードは使えません。")
+
     print("起動中… 音声認識モデルを読み込んでいます（初回はダウンロードに数分かかります）")
-    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
-    brains = {k: Brain(p, client) for k, p in PERSONAS.items()}
+    brains = {k: Brain(p, llm) for k, p in PERSONAS.items()}
     transcriber = Transcriber()
     detector = WakeWordDetector()
     speaker = Speaker()
 
     current = "jarvis"
+    dev_mode = False
     p = PERSONAS[current]
     speaker.say(p.greeting.format(call=p.call), p)
     speaker.wait()
 
     try:
         while True:
-            print(f"\n待機中…「{detector.phrase}」と呼んでください（終了: Ctrl+C）")
+            mode = "【開発モード】" if dev_mode else ""
+            print(f"\n{mode}待機中…「{detector.phrase}」と呼んでください（終了: Ctrl+C）")
             detector.wait()
             chime(up=True)
 
@@ -107,6 +143,34 @@ def main() -> None:
                     print(f"→ {np_.display} に交代")
                     speaker.say(np_.greeting.format(call=np_.call), np_)
                     speaker.wait()
+                    followup = True
+                    continue
+
+                norm = _norm(text)
+                if any(w in norm for w in DEV_END_WORDS):
+                    dev_mode = False
+                    print("→ 開発モード終了")
+                    speaker.say("開発モードを終了します。", persona)
+                    speaker.wait()
+                    followup = True
+                    continue
+
+                if any(w in norm for w in DEV_START_WORDS):
+                    if not coder.available():
+                        speaker.say("申し訳ありません、Claude Code が見つからないため、開発モードは使えません。", persona)
+                        speaker.wait()
+                        followup = True
+                        continue
+                    dev_mode = True
+                    coder.new_session()
+                    print("→ 開発モード開始（以降の発言は Claude Code に渡します）")
+                    speaker.say("開発モードに入ります。作りたいものや直したいところをどうぞ。", persona)
+                    speaker.wait()
+                    followup = True
+                    continue
+
+                if coder.available() and (dev_mode or any(w in norm for w in CLAUDE_CODE_WORDS)):
+                    ask_claude_code(coder, text, persona, speaker)
                     followup = True
                     continue
 
