@@ -16,6 +16,7 @@ JARVIS（執事・司令塔）、FRIDAY（実務担当）、EDITH（監視・警
 - 声の一覧表示：`list_voices.bat`
 - 声のエンジンとして AivisSpeech（http://127.0.0.1:10101）を別途起動して使う
 - 会話の頭脳として Ollama（http://127.0.0.1:11434）を使う（無料・PC上で動く）
+  - 本体は `C:\Ollama`、モデルは `C:\ollama\models`（環境変数 `OLLAMA_MODELS`）に置いた。PowerShell の `irm ... | iex` での導入は日本語ユーザー名のため失敗したので、`OllamaSetup.exe /DIR="C:\Ollama"` で入れた
 - PC：Ryzen 7 7700 / メモリ32GB / RTX 4060 Ti（8GB）
 - Claude は **Pro プラン**。Claude Code はPCにインストール済み
 
