@@ -18,7 +18,7 @@ JARVIS（執事・司令塔）、FRIDAY（実務担当）、EDITH（監視・警
 - 会話の頭脳として Ollama（http://127.0.0.1:11434）を使う（無料・PC上で動く）
   - 本体は `C:\Ollama`、モデルは `C:\ollama\models`（環境変数 `OLLAMA_MODELS`）に置いた。PowerShell の `irm ... | iex` での導入は日本語ユーザー名のため失敗したので、`OllamaSetup.exe /DIR="C:\Ollama"` で入れた
 - PC：Ryzen 7 7700 / メモリ32GB / RTX 4060 Ti（8GB）
-- Claude は **Pro プラン**。Claude Code はPCにインストール済み
+- Claude は **Pro プラン**。コマンドプロンプトで `claude` が「認識されていません」と出たため、**CLI版の Claude Code はまだ入っていない**（使っていたのはデスクトップアプリの可能性）
 
 ## ファイル構成
 | ファイル | 役割 |
@@ -47,6 +47,12 @@ JARVIS（執事・司令塔）、FRIDAY（実務担当）、EDITH（監視・警
 - `.env` の主な項目：`LLM_ENGINE`、`OLLAMA_URL`、`OLLAMA_MODEL`、`CLAUDE_CODE_PATH`、`CLAUDE_CODE_DIR`、`CLAUDE_CODE_TIMEOUT`、`ANTHROPIC_API_KEY`（`LLM_ENGINE=claude` のときだけ）、`CLAUDE_MODEL`、`TTS_ENGINE=voicevox`、`VOICEVOX_URL`、`VOICEVOX_SPEAKER_*`、`TTS_ENGINE_JARVIS`、`ELEVENLABS_API_KEY`、`ELEVENLABS_VOICE_JARVIS`、`VOICE_FX_JARVIS`、`VOICE_FX_AMOUNT`、`WAKEWORD_SENSITIVITY`、`FOLLOWUP_SECONDS`
 
 ## 次にやること
+0. **PCでのセットアップ（途中）**
+   - 済：Ollama の導入、`ollama pull qwen2.5:7b`
+   - 次：`dir "%USERPROFILE%\.local\bin\claude.exe"` で既存の有無を確認 → 無ければ `winget install Anthropic.ClaudeCode` で CLI 版を入れ、`claude --version` で確認
+   - 次：`git --version` で Git を確認（無ければ `winget install Git.Git`）
+   - 次：`C:\jarvis` をバックアップ → `git init` / `git remote add origin https://github.com/ryokawase777-ops/Jarvis.git` / `git fetch origin` / `git checkout -f -B claude/amazing-ritchie-k3m58k origin/claude/amazing-ritchie-k3m58k` で最新コードを取り込む（`claude remote-control` で起動した Claude Code に頼んでもよい）
+   - 次：`claude` → `/status` で Pro ログインを確認 → `start_jarvis.bat` で「頭脳: Ollama」を確認し、声で動作確認（会話・交代・開発モード・終了）
 1. **JARVISの声を決める（作業中）**
    ElevenLabs の Voice Design で「30代後半の英国男性、中低音、明瞭で品があり、穏やかでほんのり皮肉っぽい、AI執事」を目指して声を作り、`voice_id` を `.env` の `ELEVENLABS_VOICE_JARVIS` に設定する。仕上げに `VOICE_FX_AMOUNT=0.3` 前後で処理感を控えめにする。
 2. **第2段階：FRIDAYにPC作業をさせる**
