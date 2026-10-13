@@ -1,0 +1,9 @@
+anthropic
+python-dotenv
+numpy
+sounddevice
+faster-whisper
+edge-tts
+pygame
+openwakeword
+pvporcupine
